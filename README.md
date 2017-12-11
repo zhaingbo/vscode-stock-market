@@ -4,6 +4,6 @@
 
 ![](https://github.com/rrylee/vscode-stock-market/blob/master/images/img1.jpg)
 
-[x] 指数
-[] 股票
-[] 基金
+- [x] 指数
+- [] 股票
+- [] 基金
