@@ -2,7 +2,7 @@
     "name": "stock-market",
     "displayName": "stock-market",
     "description": "股票指数",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "publisher": "rrylee",
     "engines": {
         "vscode": "^1.18.0"
