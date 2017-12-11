@@ -2,7 +2,7 @@
 
 > coding 的时候方便查看股票，指数，基金
 
-![](./images/img1.jpg)
+![](https://github.com/rrylee/vscode-stock-market/blob/master/images/img1.jpg)
 
 [x] 指数
 [] 股票
