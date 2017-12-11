@@ -2,7 +2,7 @@
     "name": "stock-market",
     "displayName": "stock-market",
     "description": "股票指数",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "publisher": "rrylee",
     "engines": {
         "vscode": "^1.18.0"
@@ -17,10 +17,15 @@
     "contributes": {
         "configuration": {
             "properties": {
-                "vscode-stocks.stockCodes": {
+                "vscode-stocks.indices": {
                     "type": "array",
-                    "default": [],
-                    "description": "股票代码列表"
+                    "default": ["上证", "创业"],
+                    "description": "指数列表"
+                },
+                "vscode-stocks.refreshDuration": {
+                    "type": "number",
+                    "default": 1000,
+                    "description": "数据刷新时间(微秒)"
                 }
             }
         }

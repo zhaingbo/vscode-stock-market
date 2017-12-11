@@ -8,77 +8,113 @@ const api = 'https://hq.sinajs.cn/list='
 export function activate(context: vscode.ExtensionContext) {
     items = new Map<string, vscode.StatusBarItem>()
 
-    refresh();
+    const app = new StockApp(vscode.workspace.getConfiguration())
 
-    const now = moment();
-    if ((now > moment().hour(9).minute(15) && now < moment().hour(11).minute(30)) || (now > moment().hour(13).minute(0) && now < moment().hour(15).minute(0))) {
-        setInterval(refresh, 2000)
+    app.initialize()
+
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(() => {
+        app.initialize()
+    }))
+}
+
+class StockApp {
+    now = moment()
+
+    api = 'https://hq.sinajs.cn/list='
+
+    defaultRefreshDuration: 1000
+
+    config: vscode.WorkspaceConfiguration
+
+    statusBars: {name: string, code:string, statusBar: vscode.StatusBarItem}[] = []
+
+    indices: Map<string, {name: string, code: string}>
+
+    constructor(config: vscode.WorkspaceConfiguration) {
+        this.config = config
+
+        this.configIndices()
     }
 
-    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(refresh))
-}
+    initialize() {
+        this.reset()
 
-function refresh(): void {
-    const config = vscode.workspace.getConfiguration()
-    const configuredCodes = config.get('vscode-stocks.stockCodes', [])
+        this.initializeStatusBars()
 
-    if (!arrayEq(configuredCodes, Array.from(items.keys()))) {
-        cleanup()
-        fillEmpty(configuredCodes)
+        this.refreshIndices()
+
+        setInterval(this.refreshIndices.bind(this), this.refreshDuration())
     }
 
-    refreshStocks(configuredCodes)
-}
-
-function cleanup(): void {
-    items.forEach(item => {
-        item.hide()
-        item.dispose()
-    });
-
-    items = new Map<string, vscode.StatusBarItem>()
-}
-
-function fillEmpty(codes: {name: string, type: string, code: string}[]): void {
-    codes
-        .forEach((code, i) => {
-            const priority = codes.length - i
-            const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, priority)
-            item.text = `${code.name}...`
-            item.show()
-            items.set(code.code, item)
+    initializeStatusBars() {
+        const configuredIndexNames = this.config.get('vscode-stocks.indices', [])
+        configuredIndexNames.forEach((name, i) => {
+            const index = this.indices.get(name)
+            if (index) {
+                const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, configuredIndexNames.length - i)
+                item.text = `${index.name}...`
+                item.show()
+    
+                this.statusBars.push({
+                    name: index.name,
+                    code: index.code,
+                    statusBar: item
+                })
+            } else {
+                console.log(`[debug]${name} not found`)
+            }
         })
+    }
+
+    refreshIndices() {
+        this.statusBars
+            .forEach(item => {
+                const { name, code, statusBar } = item
+
+                httpGet(`${this.api}${code}`)
+                    .then(data => {
+                        const detail = data.split('=')[1].trim().split(',');
+                        const currentNumber: number = Math.round(Number(detail[1]) * 100) / 100;
+                        const diff: number = Number(detail[2]);
+                        
+                        statusBar.text = `${name}${currentNumber}`
+                        if (diff > 0) {
+                            statusBar.color = 'red';
+                        } else if (diff === 0) {
+                            statusBar.color = 'white';
+                        } else {
+                            statusBar.color = 'green';
+                        }
+                    })
+                    .catch(e => {
+                        console.log(e)
+                    })
+            })
+    }
+
+    refreshDuration() {
+        return this.config.get('vscode-stocks.refreshDuration', this.defaultRefreshDuration)
+    }
+
+    configIndices() {
+        this.indices = new Map<string, {name: string, code: string}>()
+        this.indices.set('上证', {'name': '上证', 'code': 's_sh000001'})
+        this.indices.set('创业', {'name': '创业', 'code': 's_sz399006'})
+        this.indices.set('深证成指', {'name': '深证成指', 'code': 's_sz399001'})
+    }
+
+    inTradingTime() {
+        return (this.now > moment().hour(9).minute(15) && this.now < moment().hour(11).minute(30)) || 
+            (this.now > moment().hour(13).minute(0) && this.now < moment().hour(15).minute(0));
+    }
+
+    reset() {
+        this.statusBars = []
+        this.now = moment()
+    }
 }
 
-function refreshStocks(codes: {name: string, type: string, code: string}[]): void {
-    codes.forEach(code => {
-        get(`${api}${code.code}`)
-            .then(data => {
-                const { name, type } = code
-
-                if (type === 'exponent') {
-                    const detail = data.split('=')[1].trim().split(',');
-                    const currentNumber: number = Math.round(Number(detail[1]) * 100) / 100;
-                    const diff: number = Number(detail[2]);
-                    const item = items.get(code.code);
-
-                    item.text = `${name}${currentNumber}`
-                    if (diff > 0) {
-                        item.color = 'red';
-                    } else if (diff === 0) {
-                        item.color = 'white';
-                    } else {
-                        item.color = 'green';
-                    }
-                }
-            })
-            .catch(e => {
-                //
-            })
-    })
-}
-
-function get(url): Promise<string> {
+function httpGet(url): Promise<string> {
     return new Promise((resolve, reject) => {
         https.get(url, response => {
             let responseData = '';
