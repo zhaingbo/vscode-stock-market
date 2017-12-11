@@ -8,9 +8,13 @@ const api = 'https://hq.sinajs.cn/list='
 export function activate(context: vscode.ExtensionContext) {
     items = new Map<string, vscode.StatusBarItem>()
 
-    refresh()
+    refresh();
 
-    setInterval(refresh, 2000)
+    const now = moment();
+    if ((now > moment().hour(9).minute(15) && now < moment().hour(11).minute(30)) || (now > moment().hour(13).minute(0) && now < moment().hour(15).minute(0))) {
+        setInterval(refresh, 2000)
+    }
+
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(refresh))
 }
 
@@ -40,7 +44,7 @@ function fillEmpty(codes: {name: string, type: string, code: string}[]): void {
         .forEach((code, i) => {
             const priority = codes.length - i
             const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, priority)
-            item.text = `${code.name}()`
+            item.text = `${code.name}...`
             item.show()
             items.set(code.code, item)
         })
@@ -54,17 +58,17 @@ function refreshStocks(codes: {name: string, type: string, code: string}[]): voi
 
                 if (type === 'exponent') {
                     const detail = data.split('=')[1].trim().split(',');
-                    const currentNumber: number = Number(detail[1]);
+                    const currentNumber: number = Math.round(Number(detail[1]) * 100) / 100;
                     const diff: number = Number(detail[2]);
-                    const stock = items.get(code.code);
+                    const item = items.get(code.code);
 
-                    stock.text = `${name}(${currentNumber})`
+                    item.text = `${name}${currentNumber}`
                     if (diff > 0) {
-                        stock.color = 'red';
+                        item.color = 'red';
                     } else if (diff === 0) {
-                        stock.color = 'white';
+                        item.color = 'white';
                     } else {
-                        stock.color = 'green';
+                        item.color = 'green';
                     }
                 }
             })
@@ -92,7 +96,7 @@ function get(url): Promise<string> {
 
 function arrayEq(arr1: any[], arr2: any[]):boolean {
     if (arr1.length !== arr2.length) return false;
-    
+
     return !arr1.some((item, i) => item !== arr2[i]);
 }
 
