@@ -3,7 +3,7 @@
     "displayName": "stock-market",
     "description": "股票指数",
     "version": "0.0.1",
-    "publisher": "RryLee",
+    "publisher": "rrylee",
     "engines": {
         "vscode": "^1.18.0"
     },
